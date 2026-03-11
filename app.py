@@ -48,11 +48,10 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # SESSION COOKIE SETTINGS (IMPORTANT FOR RENDER) 
-    # Configure for cross-origin requests in production
-    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Changed from "None" for better compatibility
-    app.config["SESSION_COOKIE_SECURE"] = False  # Set to False for HTTP, True for HTTPS
-    app.config["SESSION_TYPE"] = "filesystem"
+    # SESSION COOKIE SETTINGS (CRITICAL FOR CROSS-SITE RENDER DEPLOYMENT) 
+    # Frontend: isms-frontend.onrender.com | Backend: isms-backend.onrender.com
+    app.config["SESSION_COOKIE_SAMESITE"] = "None"
+    app.config["SESSION_COOKIE_SECURE"] = True
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
 
     # CORS SETTINGS 
