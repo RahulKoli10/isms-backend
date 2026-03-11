@@ -8,8 +8,13 @@ user_bp = Blueprint('login', __name__)
 # =========================
 # LOGIN ROUTE
 # =========================
-@user_bp.route("/login", methods=["POST"])
+@user_bp.route("/login", methods=["POST", "OPTIONS"])
 def login():
+
+    # Handle CORS preflight request
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+
     try:
         data = request.get_json()
 
@@ -42,17 +47,17 @@ def login():
                 "message": "User not found"
             }), 404
 
-        # Password Check (Plain text - based on your model)
+        # Password check
         if not user.check_password(password):
             return jsonify({
                 "success": False,
                 "message": "Invalid password"
             }), 401
 
-        # Update status to Active
+        # Update status
         user.status = "Online"
 
-        # Create log entry
+        # Create login log
         new_log = Log(
             login_time=datetime.datetime.now().isoformat(),
             username=user.username,
@@ -62,6 +67,7 @@ def login():
             role=user.role,
             action="User Logged In"
         )
+
         print(f"📝 Creating Log -> User: {new_log.username}, Designation: {new_log.designation}")
 
         db.session.add(new_log)
@@ -90,12 +96,17 @@ def login():
 # =========================
 # LOGOUT ROUTE
 # =========================
-@user_bp.route("/logout", methods=["POST"])
+@user_bp.route("/logout", methods=["POST", "OPTIONS"])
 def logout():
+
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+
     try:
         username = session.get("username")
-        
-        # Fallback: Check request body if session is empty
+
+        # Fallback if session missing
         if not username and request.is_json:
             username = request.json.get("username")
 
@@ -138,8 +149,12 @@ def logout():
 # =========================
 # GET LOGS ROUTE
 # =========================
-@user_bp.route("/logs", methods=["GET"])
+@user_bp.route("/logs", methods=["GET", "OPTIONS"])
 def get_logs():
+
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+
     try:
         logs = Log.query.order_by(Log.login_time.desc()).all()
         return jsonify([log.to_dict() for log in logs]), 200

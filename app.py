@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -55,36 +55,47 @@ def create_app(config_class=Config):
     app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
 
-    allowed_origins = [origin.strip() for origin in app.config.get("ALLOWED_ORIGINS", []) if origin.strip()]
-    if not allowed_origins:
-        allowed_origins = [
-            "https://isms-frontend.onrender.com",
-            "http://localhost:5173",
-            "http://localhost:3000",
-        ]
-
-    # CORS SETTINGS 
-
-    # Ensure allowed_origins is properly loaded
-    allowed_origins = app.config.get("ALLOWED_ORIGINS", [])
-    if not allowed_origins:
-        allowed_origins = [
-            "https://isms-frontend.onrender.com",
-            "http://localhost:5173",
-            "http://localhost:3000",
-        ]
-        app.config["ALLOWED_ORIGINS"] = allowed_origins
+    # CORS SETTINGS - Define allowed origins
+    allowed_origins = [
+        "https://isms-frontend.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ]
+    
+    # Allow overriding from environment variable
+    env_origins = os.environ.get("ALLOWED_ORIGINS")
+    if env_origins:
+        allowed_origins = [origin.strip() for origin in env_origins.split(",") if origin.strip()]
+    
+    # Also check config
+    config_origins = app.config.get("ALLOWED_ORIGINS", [])
+    if config_origins:
+        allowed_origins = config_origins
     
     print(f"🔧 CORS Allowed Origins: {allowed_origins}")
 
-    CORS(
+    # Initialize CORS with comprehensive settings
+    cors = CORS(
         app,
         supports_credentials=True,
         origins=allowed_origins,
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-        expose_headers=["Content-Range", "X-Content-Range"]
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
+        expose_headers=["Content-Range", "X-Content-Range", "Content-Length"],
+        max_age=3600
     )
+    
+    # Add explicit CORS headers to all responses
+    @app.after_request
+    def add_cors_headers(response):
+        origin = request.headers.get('Origin')
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Max-Age'] = '3600'
+        return response
  
     # DATABASE 
 
