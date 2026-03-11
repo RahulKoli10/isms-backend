@@ -73,6 +73,26 @@ def login():
 
     return jsonify({"success": False, "message": "Invalid username or password"}), 401
 
+@auth_bp.route('/session', methods=['GET'])
+def get_session():
+    """
+    Verifies if a user session is active and returns user data.
+    """
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"authenticated": False, "message": "No active session"}), 401
+    
+    user = Admin.query.get(user_id) or User.query.get(user_id)
+    
+    if not user:
+        session.clear()
+        return jsonify({"authenticated": False, "message": "User not found"}), 401
+    
+    return jsonify({
+        "authenticated": True,
+        "user": user.to_dict()
+    }), 200
+
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     """
