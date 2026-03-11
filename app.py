@@ -75,27 +75,18 @@ def create_app(config_class=Config):
     print(f"🔧 CORS Allowed Origins: {allowed_origins}")
 
     # Initialize CORS with comprehensive settings
-    cors = CORS(
+    CORS(
         app,
+        resources={r"/api/*": {"origins": allowed_origins}},
         supports_credentials=True,
-        origins=allowed_origins,
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
         expose_headers=["Content-Range", "X-Content-Range", "Content-Length"],
         max_age=3600
     )
     
-    # Add explicit CORS headers to all responses
-    @app.after_request
-    def add_cors_headers(response):
-        origin = request.headers.get('Origin')
-        if origin in allowed_origins:
-            response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS, PATCH'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, Accept, Origin'
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-            response.headers['Access-Control-Max-Age'] = '3600'
-        return response
+    # Also allow CORS for the root health check route
+    CORS(app, resources={r"/": {"origins": allowed_origins}})
  
     # DATABASE 
 
@@ -149,27 +140,19 @@ def create_app(config_class=Config):
 # START APPLICATION 
 app = create_app()
 
-if __name__ == "__main__":
-
-    # Ensure database exists
-    _create_database_if_not_exists(app.config)
-
+def setup_database():
     with app.app_context():
-
+        # Ensure database exists (for MySQL)
+        _create_database_if_not_exists(app.config)
         db.create_all()
         print("✅ Database Tables Verified/Created")
 
-        
         # AUTO CREATE SUPERADMIN 
-
         from models import Admin
-
         super_admin = Admin.query.filter_by(username="superadmin").first()
 
         if not super_admin:
-
             print("🌱 Seeding default Superadmin...")
-
             super_admin = Admin(
                 username="superadmin",
                 email="superadmin@isms.com",
@@ -179,27 +162,24 @@ if __name__ == "__main__":
                 domain="Management",
                 designation="HR Head"
             )
-
             super_admin.set_password(
                 os.environ.get("SUPERADMIN_DEFAULT_PASSWORD", "ChangeMe@123!")
             )
-
             db.session.add(super_admin)
             db.session.commit()
-
             print("✅ Default Superadmin Created")
-
         else:
-
             if super_admin.designation != "HR Head" or super_admin.domain != "Management":
-
                 print("🔄 Updating Superadmin details...")
-
                 super_admin.designation = "HR Head"
                 super_admin.domain = "Management"
-
                 db.session.commit()
-
                 print("✅ Superadmin details updated")
 
-    app.run(host="0.0.0.0", port=5000, debug=Config.DEBUG)
+# Run DB setup during import/initialization phase for production safety
+setup_database()
+
+if __name__ == "__main__":
+    # Local development server
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=app.config.get("DEBUG", True))
