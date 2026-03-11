@@ -18,10 +18,19 @@ class Config:
     SCREENSHOT_FOLDER = os.path.join(BASE_DIR, os.environ.get("SCREENSHOT_FOLDER", "storage/screenshots"))
 
     # CORS
-    ALLOWED_ORIGINS = os.environ.get(
+    # Handle both string and list formats for ALLOWED_ORIGINS
+    allowed_origins_env = os.environ.get(
         "ALLOWED_ORIGINS",
         "https://isms-frontend.onrender.com,http://localhost:5173,http://localhost:3000",
-    ).split(",")
+    )
+    # Split by comma and filter empty strings
+    ALLOWED_ORIGINS = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+    if not ALLOWED_ORIGINS:
+        ALLOWED_ORIGINS = [
+            "https://isms-frontend.onrender.com",
+            "http://localhost:5173",
+            "http://localhost:3000",
+        ]
 
     # App
     DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")

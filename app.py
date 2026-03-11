@@ -65,10 +65,25 @@ def create_app(config_class=Config):
 
     # CORS SETTINGS 
 
+    # Ensure allowed_origins is properly loaded
+    allowed_origins = app.config.get("ALLOWED_ORIGINS", [])
+    if not allowed_origins:
+        allowed_origins = [
+            "https://isms-frontend.onrender.com",
+            "http://localhost:5173",
+            "http://localhost:3000",
+        ]
+        app.config["ALLOWED_ORIGINS"] = allowed_origins
+    
+    print(f"🔧 CORS Allowed Origins: {allowed_origins}")
+
     CORS(
         app,
         supports_credentials=True,
-        origins=allowed_origins
+        origins=allowed_origins,
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
+        expose_headers=["Content-Range", "X-Content-Range"]
     )
  
     # DATABASE 
