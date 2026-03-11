@@ -47,23 +47,28 @@ def create_app(config_class=Config):
 
     app = Flask(__name__)
     app.config.from_object(config_class)
+    is_production = not app.debug
 
-    # SESSION COOKIE SETTINGS (CRITICAL FOR CROSS-SITE RENDER DEPLOYMENT) 
-    # Frontend: isms-frontend.onrender.com | Backend: isms-backend.onrender.com
-    app.config["SESSION_COOKIE_SAMESITE"] = "None"
-    app.config["SESSION_COOKIE_SECURE"] = True
+    # Cross-site session cookies must be Secure + SameSite=None on Render HTTPS.
+    app.config["SESSION_COOKIE_SAMESITE"] = "None" if is_production else "Lax"
+    app.config["SESSION_COOKIE_SECURE"] = is_production
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
+
+    allowed_origins = [origin.strip() for origin in app.config.get("ALLOWED_ORIGINS", []) if origin.strip()]
+    if not allowed_origins:
+        allowed_origins = [
+            "https://isms-frontend.onrender.com",
+            "http://localhost:5173",
+            "http://localhost:3000",
+        ]
 
     # CORS SETTINGS 
 
     CORS(
         app,
         supports_credentials=True,
-        origins=[
-            "https://isms-frontend.onrender.com",
-            "http://localhost:5173",
-            "http://localhost:3000"
-        ]
+        origins=allowed_origins
     )
  
     # DATABASE 

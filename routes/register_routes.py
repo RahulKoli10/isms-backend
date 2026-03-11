@@ -6,7 +6,6 @@ from .report_routes import DailyReport_bp, WeeklyReport_bp
 from .task_routes import task_bp
 from .activity_routes import activity_bp
 from .misc_routes import misc_bp
-from .login_routes import user_bp
 
 
 def register_routes(app):
@@ -19,4 +18,3 @@ def register_routes(app):
     app.register_blueprint(task_bp, url_prefix='/api')
     app.register_blueprint(activity_bp, url_prefix='/api')
     app.register_blueprint(misc_bp, url_prefix='/api')
-    app.register_blueprint(user_bp, url_prefix='/api')
