@@ -49,9 +49,11 @@ def create_app(config_class=Config):
     app.config.from_object(config_class)
 
     # SESSION COOKIE SETTINGS (IMPORTANT FOR RENDER) 
-
-    app.config["SESSION_COOKIE_SAMESITE"] = "None"
-    app.config["SESSION_COOKIE_SECURE"] = True
+    # Configure for cross-origin requests in production
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # Changed from "None" for better compatibility
+    app.config["SESSION_COOKIE_SECURE"] = False  # Set to False for HTTP, True for HTTPS
+    app.config["SESSION_TYPE"] = "filesystem"
+    app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
 
     # CORS SETTINGS 
 
@@ -60,7 +62,8 @@ def create_app(config_class=Config):
         supports_credentials=True,
         origins=[
             "https://isms-frontend.onrender.com",
-            "http://localhost:5173"
+            "http://localhost:5173",
+            "http://localhost:3000"
         ]
     )
  
