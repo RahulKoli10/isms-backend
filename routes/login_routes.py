@@ -6,6 +6,37 @@ user_bp = Blueprint('login', __name__)
 
 
 # =========================
+# SESSION VERIFICATION ROUTE
+# =========================
+@user_bp.route("/session", methods=["GET", "OPTIONS"])
+def check_session():
+    """Verify if user session is valid."""
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+    
+    user_id = session.get("user_id")
+    username = session.get("username")
+    role = session.get("role")
+    
+    if user_id and username:
+        return jsonify({
+            "success": True,
+            "authenticated": True,
+            "user": {
+                "id": user_id,
+                "username": username,
+                "role": role
+            }
+        }), 200
+    else:
+        return jsonify({
+            "success": False,
+            "authenticated": False,
+            "message": "No active session"
+        }), 401
+
+
+# =========================
 # LOGIN ROUTE
 # =========================
 @user_bp.route("/login", methods=["POST", "OPTIONS"])

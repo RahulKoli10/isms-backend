@@ -74,19 +74,20 @@ def create_app(config_class=Config):
     
     print(f"🔧 CORS Allowed Origins: {allowed_origins}")
 
-    # Initialize CORS with comprehensive settings
+    # Initialize CORS with comprehensive settings for credentials support
     CORS(
         app,
-        resources={r"/api/*": {"origins": allowed_origins}},
+        resources={
+            r"/api/*": {"origins": allowed_origins},
+            r"/": {"origins": allowed_origins}
+        },
         supports_credentials=True,
         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-        expose_headers=["Content-Range", "X-Content-Range", "Content-Length"],
-        max_age=3600
+        allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Cookie", "Set-Cookie"],
+        expose_headers=["Content-Range", "X-Content-Range", "Content-Length", "Set-Cookie"],
+        max_age=3600,
+        vary_header=True
     )
-    
-    # Also allow CORS for the root health check route
-    CORS(app, resources={r"/": {"origins": allowed_origins}})
  
     # DATABASE 
 
