@@ -37,10 +37,14 @@ class Config:
     PORT = int(os.environ.get("PORT", 5000))
     IS_PRODUCTION = os.environ.get("IS_PRODUCTION", "True").lower() in ("true", "1", "yes")
 
-    # Session cookies
+    # Session cookies - PRODUCTION FIX
+    SESSION_TYPE = "filesystem"
+    SESSION_PERMANENT = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "True").lower() in ("true", "1", "yes")
     SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "None")
+    SESSION_FILE_DIR = "/tmp/flask_session"
+    SESSION_USE_SIGNER = True
 
     # JWT
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY") or "jwt_secret_change_in_production"

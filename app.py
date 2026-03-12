@@ -4,6 +4,7 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from datetime import timedelta
+from flask_session import Session
 import mysql.connector
 from urllib.parse import urlparse
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -101,6 +102,7 @@ def create_app(config_class=Config):
     # DATABASE 
 
     db.init_app(app)
+    Session(app)
  
     # RATE LIMITER 
 
