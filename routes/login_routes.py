@@ -187,7 +187,7 @@ def get_logs():
         return jsonify({"status": "ok"}), 200
 
     try:
-        logs = Log.query.order_by(Log.login_time.desc()).all()
+        logs = Log.query.order_by(Log.id.desc()).all()
         return jsonify([log.to_dict() for log in logs]), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

@@ -47,7 +47,9 @@ def create_app(config_class=Config):
 
     app = Flask(__name__)
     app.config.from_object(config_class)
-    is_production = not app.debug
+    app_env = os.environ.get("FLASK_ENV", "").lower()
+    running_on_render = os.environ.get("RENDER", "").lower() == "true"
+    is_production = running_on_render or (app_env == "production" and not app.debug)
 
     # Cross-site session cookies must be Secure + SameSite=None on Render HTTPS.
     app.config["SESSION_COOKIE_SAMESITE"] = "None" if is_production else "Lax"
