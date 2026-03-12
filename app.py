@@ -59,7 +59,7 @@ def create_app(config_class=Config):
 
     # CORS SETTINGS - Define allowed origins
     allowed_origins = [
-        "https://isms-frontend.onrender.com",
+        "https://isms-frontend-hsz2.onrender.com",
         "http://localhost:5173",
         "http://localhost:3000",
     ]

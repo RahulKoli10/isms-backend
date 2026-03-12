@@ -21,13 +21,13 @@ class Config:
     # Handle both string and list formats for ALLOWED_ORIGINS
     allowed_origins_env = os.environ.get(
         "ALLOWED_ORIGINS",
-        "https://isms-frontend.onrender.com,http://localhost:5173,http://localhost:3000",
+        "https://isms-frontend-hsz2.onrender.com,http://localhost:5173,http://localhost:3000",
     )
     # Split by comma and filter empty strings
     ALLOWED_ORIGINS = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
     if not ALLOWED_ORIGINS:
         ALLOWED_ORIGINS = [
-            "https://isms-frontend.onrender.com",
+            "https://isms-frontend-hsz2.onrender.com",
             "http://localhost:5173",
             "http://localhost:3000",
         ]
