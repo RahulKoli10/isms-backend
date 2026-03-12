@@ -104,6 +104,11 @@ def create_app(config_class=Config):
     db.init_app(app)
     Session(app)
  
+    # Create /tmp/flask_session dir for Render
+    import os
+    os.makedirs(app.config.get('SESSION_FILE_DIR', '/tmp/flask_session'), exist_ok=True)
+ 
+ 
     # RATE LIMITER 
 
     limiter = Limiter(
