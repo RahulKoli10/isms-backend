@@ -101,6 +101,9 @@ def create_app(config_class=Config):
         session_same_site = "Lax"
     app.config["SESSION_COOKIE_SAMESITE"] = session_same_site
     app.config["SESSION_COOKIE_SECURE"] = bool(app.config.get("SESSION_COOKIE_SECURE", False))
+    app.config["SESSION_COOKIE_PARTITIONED"] = bool(
+        app.config.get("SESSION_COOKIE_PARTITIONED", False)
+    )
     app.config["SESSION_COOKIE_HTTPONLY"] = True
 
     allowed_origins = list(dict.fromkeys(app.config.get("ALLOWED_ORIGINS", [])))

@@ -49,10 +49,13 @@ def login():
             db.session.add(new_log)
             db.session.commit()
 
-            # Set session for auth_middleware
+            # Reset and re-issue the authenticated session cookie explicitly.
+            session.clear()
+            session.permanent = True
             session["user_id"] = user.id
             session["username"] = user.username
             session["role"] = user.role
+            session.modified = True
 
             return jsonify({
                 "success": True,

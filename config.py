@@ -63,11 +63,16 @@ class Config:
     SESSION_COOKIE_NAME = os.environ.get("SESSION_COOKIE_NAME", "isms_session")
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SECURE = _get_bool("SESSION_COOKIE_SECURE", default=IS_PRODUCTION)
+    SESSION_COOKIE_PARTITIONED = _get_bool(
+        "SESSION_COOKIE_PARTITIONED",
+        default=IS_PRODUCTION,
+    )
     SESSION_COOKIE_SAMESITE = os.environ.get(
         "SESSION_COOKIE_SAMESITE",
         "None" if IS_PRODUCTION else "Lax",
     )
     SESSION_PERMANENT = True
+    SESSION_REFRESH_EACH_REQUEST = True
 
     JWT_ACCESS_TOKEN_EXPIRES = int(os.environ.get("JWT_ACCESS_TOKEN_EXPIRES", 3600))
 
