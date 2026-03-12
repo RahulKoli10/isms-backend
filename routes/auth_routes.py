@@ -1,5 +1,5 @@
 import datetime
-from flask import Blueprint, request, jsonify, session, current_app
+from flask import Blueprint, request, jsonify, session
 from models import db, Admin, User, Log
 from sqlalchemy import or_
 
@@ -9,15 +9,8 @@ auth_bp = Blueprint('auth_bp', __name__)
 def login():
     """
     Handles login for ALL users — checks Admin table first, then User table.
-    Includes rate limiting to prevent brute-force.
+    Default app-wide rate limits are enforced by Flask-Limiter.
     """
-    # Apply rate limiting if limiter is available
-    if hasattr(current_app, 'limiter'):
-        @current_app.limiter.limit("5 per minute")
-        def limited_login():
-            return True
-        # Note: In a real production app, you'd use the decorator directly on the route.
-        # Here we are using current_app.limiter which is initialized in create_app.
 
     data = request.get_json()
     if not data:

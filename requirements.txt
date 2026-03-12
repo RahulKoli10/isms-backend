@@ -3,10 +3,10 @@ flask-sqlalchemy
 flask-cors
 python-dotenv
 mysql-connector-python
+psycopg[binary]
 razorpay
 PyJWT
 Werkzeug
 flask-limiter
-Flask-Session==0.5.0
 pytz
 gunicorn
