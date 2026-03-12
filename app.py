@@ -5,6 +5,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import mysql.connector
 from urllib.parse import urlparse
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from models import db
 from config import Config
@@ -46,6 +47,7 @@ def _create_database_if_not_exists(app_config):
 def create_app(config_class=Config):
 
     app = Flask(__name__)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     app.config.from_object(config_class)
     app_env = os.environ.get("FLASK_ENV", "").lower()
     running_on_render = os.environ.get("RENDER", "").lower() == "true"
