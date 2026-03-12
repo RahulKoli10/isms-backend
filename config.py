@@ -35,6 +35,12 @@ class Config:
     # App
     DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
     PORT = int(os.environ.get("PORT", 5000))
+    IS_PRODUCTION = os.environ.get("IS_PRODUCTION", "True").lower() in ("true", "1", "yes")
+
+    # Session cookies
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "True").lower() in ("true", "1", "yes")
+    SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "None")
 
     # JWT
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY") or "jwt_secret_change_in_production"

@@ -49,15 +49,15 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     app.config.from_object(config_class)
-    app_env = os.environ.get("FLASK_ENV", "").lower()
-    running_on_render = os.environ.get("RENDER", "").lower() == "true"
-    is_production = running_on_render or (app_env == "production" and not app.debug)
-
-    # Cross-site session cookies must be Secure + SameSite=None on Render HTTPS.
-    app.config["SESSION_COOKIE_SAMESITE"] = "None" if is_production else "Lax"
-    app.config["SESSION_COOKIE_SECURE"] = is_production
-    app.config["SESSION_COOKIE_HTTPONLY"] = True
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
+
+    # Cross-site browser auth requires an explicit cookie policy.
+    session_same_site = str(app.config.get("SESSION_COOKIE_SAMESITE", "None")).strip().capitalize()
+    if session_same_site not in {"Lax", "Strict", "None"}:
+        session_same_site = "None"
+    app.config["SESSION_COOKIE_SAMESITE"] = session_same_site
+    app.config["SESSION_COOKIE_SECURE"] = bool(app.config.get("SESSION_COOKIE_SECURE", True))
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
 
     # CORS SETTINGS - Define allowed origins
     allowed_origins = [
