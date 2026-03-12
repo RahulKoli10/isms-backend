@@ -3,6 +3,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from datetime import timedelta
 import mysql.connector
 from urllib.parse import urlparse
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -50,6 +51,10 @@ def create_app(config_class=Config):
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
     app.config.from_object(config_class)
     app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
+
+    # 🎯 PRODUCTION SESSION FIX: 8hr persistent sessions
+    app.permanent_session_lifetime = timedelta(hours=8)
+    app.config['SESSION_PERMANENT'] = True
 
     # Cross-site browser auth requires an explicit cookie policy.
     session_same_site = str(app.config.get("SESSION_COOKIE_SAMESITE", "None")).strip().capitalize()
@@ -128,9 +133,21 @@ def create_app(config_class=Config):
     def internal_error(error):
         db.session.rollback()
         return jsonify({"error": "Internal server error"}), 500
- 
-    # HEALTH CHECK ROUTE 
 
+    # 🛠️ DEBUG ENDPOINT - REMOVE AFTER FIX
+    @app.route("/api/debug-session")
+    def debug_session():
+        return jsonify({
+            "session_keys": list(session.keys()),
+            "user_id": session.get("user_id"),
+            "username": session.get("username"), 
+            "role": session.get("role"),
+            "cookies_present": bool(request.cookies.get(app.secret_key[:4] + "!!")),  
+            "all_cookies": dict(request.cookies),
+            "permanent": getattr(session, 'permanent', False)
+        })
+
+    # HEALTH CHECK ROUTE 
     @app.route("/")
     def home():
         return jsonify({
