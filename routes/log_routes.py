@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models import db, Log
 from auth_middleware import login_required, role_required
-import datetime
+from utils.datetime_utils import now_ist_iso
 
 logs_bp = Blueprint('logs', __name__)
 
@@ -24,7 +24,7 @@ def create_log():
         return jsonify({"error": "Request body is required"}), 400
     try:
         new_log = Log(
-            login_time=datetime.datetime.now().isoformat(),
+            login_time=now_ist_iso(),
             username=data.get("username"),
             email=data.get("email"),
             domain=data.get("domain", ""),

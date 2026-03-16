@@ -36,8 +36,11 @@ def role_required(*allowed_roles):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
-            user_role = session.get("role", "")
-            if user_role not in allowed_roles:
+            user_role = str(session.get("role", "")).strip().lower()
+            normalized_allowed_roles = {
+                str(role).strip().lower() for role in allowed_roles
+            }
+            if user_role not in normalized_allowed_roles:
                 return jsonify({
                     "success": False,
                     "message": "Access denied. Insufficient permissions."

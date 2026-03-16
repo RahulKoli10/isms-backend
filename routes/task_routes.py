@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, session
 from models import db, Task
 from auth_middleware import login_required, role_required
 import datetime
+from utils.datetime_utils import now_ist_iso
 
 task_bp = Blueprint('task', __name__)
 
@@ -29,7 +30,7 @@ def handle_tasks():
             priority=data.get("priority"),
             description=data.get("description"),
             status=data.get("status", "Pending"),
-            createdAt=data.get("createdAt", datetime.datetime.now().isoformat())
+            createdAt=data.get("createdAt", now_ist_iso())
         )
         try:
             db.session.add(new_task)

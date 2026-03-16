@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify, session
 import datetime
 from models import db, User, Log
 from auth_middleware import login_required, role_required
+from sqlalchemy.exc import IntegrityError
+from utils.datetime_utils import now_ist_iso
 
 users_bp = Blueprint('users', __name__)
 
@@ -40,17 +42,32 @@ def create_user():
     try:
         custom_id = data.get("userId") or generate_user_id()
         designation = data.get("designation", "")
-        role = data.get("role", "User")
+        role = str(data.get("role", "User")).strip()
+        username = (data.get("username") or data.get("fullName") or "").strip()
+        email = (data.get("email") or "").strip()
+        domain = (
+            data.get("Domain")
+            or data.get("domain")
+            or data.get("department")
+            or ""
+        ).strip()
 
         if designation and designation.lower() == "mentor":
             role = "mentor"
+        elif not role:
+            role = "User"
+
+        if not username:
+            return jsonify({"error": "Username or full name is required"}), 400
+        if not email:
+            return jsonify({"error": "Email is required"}), 400
 
         new_user = User(
             custom_id=custom_id,
-            username=data.get("fullName"),
-            email=data.get("email"),
+            username=username,
+            email=email,
             role=role,
-            domain=data.get("Domain", data.get("department", "")),
+            domain=domain,
             designation=designation,
             status=data.get("status", "Offline")
         )
@@ -58,8 +75,12 @@ def create_user():
         db.session.add(new_user)
         db.session.commit()
         return jsonify(new_user.to_dict()), 201
-    except Exception:
+    except IntegrityError:
         db.session.rollback()
+        return jsonify({"error": "Username or email already exists"}), 409
+    except Exception as exc:
+        db.session.rollback()
+        print(f"create_user failed: {exc}")
         return jsonify({"error": "Failed to create user. Please try again."}), 500
 
 
@@ -76,10 +97,16 @@ def update_user(user_id):
         return jsonify({"error": "Request body is required"}), 400
     try:
         if "userId" in data: user.custom_id = data["userId"]
-        if "fullName" in data: user.username = data["fullName"]
-        if "email" in data: user.email = data["email"]
+        if "fullName" in data and data["fullName"].strip(): user.username = data["fullName"].strip()
+        if "email" in data and data["email"].strip(): user.email = data["email"].strip()
         if "password" in data and data["password"]: user.set_password(data["password"])
-        if "Domain" in data: user.domain = data["Domain"]
+        if "Domain" in data or "domain" in data or "department" in data:
+            user.domain = (
+                data.get("Domain")
+                or data.get("domain")
+                or data.get("department")
+                or ""
+            ).strip()
         if "designation" in data:
             user.designation = data["designation"]
             if user.designation and user.designation.lower() == "mentor":
@@ -90,8 +117,12 @@ def update_user(user_id):
 
         db.session.commit()
         return jsonify(user.to_dict()), 200
-    except Exception:
+    except IntegrityError:
         db.session.rollback()
+        return jsonify({"error": "Username or email already exists"}), 409
+    except Exception as exc:
+        db.session.rollback()
+        print(f"update_user failed: {exc}")
         return jsonify({"error": "Failed to update user. Please try again."}), 500
 
 
@@ -109,7 +140,7 @@ def delete_user(user_id):
 
         try:
             new_log = Log(
-                login_time=datetime.datetime.now().isoformat(),
+                login_time=now_ist_iso(),
                 email=session.get("username", "System"),
                 role=session.get("role", "System"),
                 action=f"Deleted User: {username_to_delete}"

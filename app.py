@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from datetime import timedelta
 
 from flask import Flask, jsonify, request
@@ -10,6 +11,74 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from config import Config
 from models import Admin, db
+
+
+def _sync_sqlite_legacy_schema(database_uri):
+    if not database_uri or not database_uri.startswith("sqlite:///"):
+        return
+
+    sqlite_path = database_uri.replace("sqlite:///", "", 1)
+    if not os.path.exists(sqlite_path):
+        return
+
+    connection = sqlite3.connect(sqlite_path)
+    try:
+        cursor = connection.cursor()
+        table_exists = cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+        ).fetchone()
+        if not table_exists:
+            return
+
+        user_columns = {
+            row[1]: row for row in cursor.execute("PRAGMA table_info(users)").fetchall()
+        }
+        expected_columns = {"custom_id", "domain", "designation"}
+        has_legacy_layout = (
+            not expected_columns.issubset(user_columns.keys())
+            or user_columns.get("id", (None, None, ""))[2].upper() != "INTEGER"
+        )
+        if not has_legacy_layout:
+            return
+
+        cursor.execute("ALTER TABLE users RENAME TO users_legacy")
+        cursor.execute(
+            """
+            CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                custom_id VARCHAR(50),
+                username VARCHAR(80) NOT NULL UNIQUE,
+                email VARCHAR(120) NOT NULL UNIQUE,
+                password VARCHAR(255) NOT NULL,
+                role VARCHAR(20) NOT NULL DEFAULT 'User',
+                domain VARCHAR(50) DEFAULT '',
+                designation VARCHAR(50) DEFAULT '',
+                status VARCHAR(20) DEFAULT 'Offline'
+            )
+            """
+        )
+        cursor.execute(
+            """
+            INSERT INTO users (username, email, password, role, domain, designation, status)
+            SELECT
+                username,
+                COALESCE(email, username || '@isms.local'),
+                password,
+                COALESCE(role, 'User'),
+                COALESCE(department, ''),
+                '',
+                CASE
+                    WHEN status IS NULL OR status = '' THEN 'Offline'
+                    WHEN LOWER(status) = 'active' THEN 'Online'
+                    ELSE status
+                END
+            FROM users_legacy
+            """
+        )
+        connection.commit()
+        print("Legacy SQLite users table migrated to current schema.")
+    finally:
+        connection.close()
 
 
 def _create_database_if_not_exists(database_uri):
@@ -74,6 +143,7 @@ def _seed_default_superadmin():
 def initialize_database(app):
     with app.app_context():
         _create_database_if_not_exists(app.config["SQLALCHEMY_DATABASE_URI"])
+        _sync_sqlite_legacy_schema(app.config["SQLALCHEMY_DATABASE_URI"])
         db.create_all()
         _seed_default_superadmin()
         print("Database schema verified.")
@@ -124,7 +194,7 @@ def create_app(config_class=Config):
     limiter = Limiter(
         key_func=get_remote_address,
         app=app,
-        default_limits=["1000 per day", "300 per hour"],
+        default_limits=["10000 per day", "5000 per hour"],
         storage_uri="memory://",
     )
     app.limiter = limiter

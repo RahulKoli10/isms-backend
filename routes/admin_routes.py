@@ -3,6 +3,7 @@ import datetime
 import os
 from models import db, Admin, Log
 from auth_middleware import login_required, role_required
+from sqlalchemy.exc import IntegrityError
 
 admins_bp = Blueprint('admins', __name__)
 
@@ -39,13 +40,20 @@ def create_admin():
         return jsonify({"error": "Request body is required"}), 400
     try:
         designation = data.get("designation")
-        role = data.get("role", "admin")
+        role = str(data.get("role", "admin")).strip().lower()
 
         if designation and designation.lower() == "mentor":
             role = "mentor"
 
         custom_id = data.get("adminId") or generate_admin_id(role)
-        username = data.get("username") or data.get("fullName")
+        username = (data.get("username") or data.get("fullName") or "").strip()
+        email = (data.get("email") or "").strip()
+        domain = (data.get("Domain") or data.get("domain") or "").strip()
+
+        if not username:
+            return jsonify({"error": "Username or full name is required"}), 400
+        if not email:
+            return jsonify({"error": "Email is required"}), 400
 
         # Require a password — no default
         password = data.get("password")
@@ -55,9 +63,9 @@ def create_admin():
         new_admin = Admin(
             custom_id=custom_id,
             username=username,
-            email=data.get("email"),
+            email=email,
             role=role,
-            domain=data.get("Domain"),
+            domain=domain,
             designation=designation,
             status=data.get("status", "Offline")
         )
@@ -65,8 +73,12 @@ def create_admin():
         db.session.add(new_admin)
         db.session.commit()
         return jsonify(new_admin.to_dict()), 201
-    except Exception:
+    except IntegrityError:
         db.session.rollback()
+        return jsonify({"error": "Username or email already exists"}), 409
+    except Exception as exc:
+        db.session.rollback()
+        print(f"create_admin failed: {exc}")
         return jsonify({"error": "Failed to create admin. Please try again."}), 500
 
 
@@ -84,11 +96,11 @@ def update_admin(admin_id):
         return jsonify({"error": "Request body is required"}), 400
     try:
         if "adminId" in data: admin.custom_id = data["adminId"]
-        if "fullName" in data: admin.username = data["fullName"]
-        if "email" in data: admin.email = data["email"]
+        if "fullName" in data and data["fullName"].strip(): admin.username = data["fullName"].strip()
+        if "email" in data and data["email"].strip(): admin.email = data["email"].strip()
         if "password" in data and data["password"]: admin.set_password(data["password"])
-        if "role" in data: admin.role = data["role"]
-        if "Domain" in data: admin.domain = data["Domain"]
+        if "role" in data and data["role"]: admin.role = str(data["role"]).strip().lower()
+        if "Domain" in data or "domain" in data: admin.domain = (data.get("Domain") or data.get("domain") or "").strip()
         if "designation" in data:
             admin.designation = data["designation"]
             if admin.designation and admin.designation.lower() == "mentor":
@@ -97,8 +109,12 @@ def update_admin(admin_id):
 
         db.session.commit()
         return jsonify(admin.to_dict()), 200
-    except Exception:
+    except IntegrityError:
         db.session.rollback()
+        return jsonify({"error": "Username or email already exists"}), 409
+    except Exception as exc:
+        db.session.rollback()
+        print(f"update_admin failed: {exc}")
         return jsonify({"error": "Failed to update admin. Please try again."}), 500
 
 

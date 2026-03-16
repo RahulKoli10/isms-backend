@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, session
-import datetime
 from models import db, User, Admin, Log
+from utils.datetime_utils import now_ist_iso
 
 user_bp = Blueprint('login', __name__)
 
@@ -90,7 +90,7 @@ def login():
 
         # Create login log
         new_log = Log(
-            login_time=datetime.datetime.now().isoformat(),
+            login_time=now_ist_iso(),
             username=user.username,
             email=user.email,
             designation=user.designation if user.designation else "N/A",
@@ -149,7 +149,7 @@ def logout():
                 user.status = "Offline"
 
                 new_log = Log(
-                    logout_time=datetime.datetime.now().isoformat(),
+                    logout_time=now_ist_iso(),
                     username=user.username,
                     email=user.email,
                     designation=user.designation or "N/A",

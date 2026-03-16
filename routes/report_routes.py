@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify, session
 from models import db, DailyReport, WeeklyReport, Log, User, Admin
 from auth_middleware import login_required, role_required
-import datetime
 import time
+from utils.datetime_utils import now_ist_iso
 
 DailyReport_bp = Blueprint('DailyReport', __name__)
 WeeklyReport_bp = Blueprint('WeeklyReport', __name__)
@@ -49,7 +49,7 @@ def create_daily_report():
                       User.query.filter_by(username=active_username).first()
 
         new_log = Log(
-            login_time=datetime.datetime.now().isoformat(),
+            login_time=now_ist_iso(),
             email=active_user.email if active_user else (data.get("email") or "system"),
             domain=active_user.domain if active_user else "Reports",
             role=active_user.role if active_user else "User",
@@ -79,7 +79,7 @@ def delete_daily_report(report_id):
                       User.query.filter_by(username=active_username).first()
 
         new_log = Log(
-            login_time=datetime.datetime.now().isoformat(),
+            login_time=now_ist_iso(),
             email=active_user.email if active_user else "system",
             domain=active_user.domain if active_user else "Reports",
             role=active_user.role if active_user else "User",
@@ -137,7 +137,7 @@ def create_weekly_report():
                       User.query.filter_by(username=active_username).first()
 
         new_log = Log(
-            login_time=datetime.datetime.now().isoformat(),
+            login_time=now_ist_iso(),
             email=active_user.email if active_user else (data.get("email") or "system"),
             domain=active_user.domain if active_user else "Reports",
             role=active_user.role if active_user else "User",
@@ -167,7 +167,7 @@ def delete_weekly_report(report_id):
                       User.query.filter_by(username=active_username).first()
 
         new_log = Log(
-            login_time=datetime.datetime.now().isoformat(),
+            login_time=now_ist_iso(),
             email=active_user.email if active_user else "system",
             domain=active_user.domain if active_user else "Reports",
             role=active_user.role if active_user else "User",
