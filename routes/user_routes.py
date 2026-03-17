@@ -3,7 +3,7 @@ import datetime
 from models import db, User, Log
 from auth_middleware import login_required, role_required
 from sqlalchemy.exc import IntegrityError
-from utils.datetime_utils import now_ist_iso
+from utils.datetime_utils import now_ist_naive
 
 users_bp = Blueprint('users', __name__)
 
@@ -140,7 +140,7 @@ def delete_user(user_id):
 
         try:
             new_log = Log(
-                login_time=now_ist_iso(),
+                login_time=now_ist_naive(),
                 email=session.get("username", "System"),
                 role=session.get("role", "System"),
                 action=f"Deleted User: {username_to_delete}"

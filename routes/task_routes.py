@@ -64,7 +64,7 @@ def handle_task_item(task_id):
 
     if request.method == "DELETE":
         # Restrict deletion to admins
-        @role_required("superadmin", "admin")
+        @role_required("superadmin", "admin", "mentor")
         def delete_task():
             try:
                 db.session.delete(task)

@@ -1,15 +1,25 @@
-from datetime import datetime
 from flask import Blueprint, jsonify, request
-from models import db, Log, Activity
+from models import db, Log, Activity, User, Admin
 from config import Config
+from utils.datetime_utils import now_ist, now_ist_iso, now_ist_naive
 import json
 import os
 import base64
-import pytz
-
-IST = pytz.timezone("Asia/Kolkata")
 
 activity_bp = Blueprint('activity', __name__)
+
+
+def get_actor_details(username, payload):
+    actor = None
+    if username:
+        actor = Admin.query.filter_by(username=username).first() or User.query.filter_by(username=username).first()
+
+    return {
+        "email": payload.get("email") or (actor.email if actor else "system@gmail.com"),
+        "domain": payload.get("domain") or (actor.domain if actor else "Agent"),
+        "role": payload.get("role") or (actor.role if actor else "User"),
+        "designation": payload.get("designation") or (actor.designation if actor else ""),
+    }
 
 
 @activity_bp.route("/activity", methods=["POST", "PATCH"])
@@ -36,7 +46,7 @@ def save_activity():
 
             os.makedirs(Config.SCREENSHOT_FOLDER, exist_ok=True)
 
-            filename = f"{username}_{int(datetime.now(IST).timestamp())}.png"
+            filename = f"{username}_{int(now_ist().timestamp())}.png"
 
             file_path = os.path.join(Config.SCREENSHOT_FOLDER, filename)
 
@@ -48,14 +58,16 @@ def save_activity():
         # =========================
 
         if action == "login":
+            actor_details = get_actor_details(username, data)
 
             new_log = Log(
                 username=username,
-                login_time=datetime.now(IST).isoformat(),
+                login_time=now_ist_naive(),
                 logout_time=None,
-                email=data.get("email", "system@gmail.com"),
-                domain="Agent",
-                role="User",
+                email=actor_details["email"],
+                domain=actor_details["domain"],
+                role=actor_details["role"],
+                designation=actor_details["designation"],
                 action="login"
             )
 
@@ -64,8 +76,8 @@ def save_activity():
             activity = Activity(
                 username=username,
                 action="login",
-                login_time=datetime.now(IST),
-                created_at=datetime.now(IST)
+                login_time=now_ist(),
+                created_at=now_ist()
             )
 
             db.session.add(activity)
@@ -82,14 +94,14 @@ def save_activity():
             ).order_by(Log.id.desc()).first()
 
             if last_login:
-                last_login.logout_time = datetime.now(IST).isoformat()
+                last_login.logout_time = now_ist_naive()
                 last_login.action = "logout"
 
             activity = Activity(
                 username=username,
                 action="logout",
-                logout_time=datetime.now(IST),
-                created_at=datetime.now(IST)
+                logout_time=now_ist(),
+                created_at=now_ist()
             )
 
             db.session.add(activity)
@@ -105,9 +117,9 @@ def save_activity():
                 action="idle",
                 idle_time=None,
                 activity_metadata=json.dumps({
-                    "idle_start": datetime.now(IST).isoformat()
+                    "idle_start": now_ist_iso()
                 }),
-                created_at=datetime.now(IST)
+                created_at=now_ist()
             )
 
             db.session.add(idle_activity)
@@ -140,7 +152,7 @@ def save_activity():
 
                 last_idle.activity_metadata = json.dumps({
                     "idle_start": idle_start,
-                    "idle_end": datetime.now(IST).isoformat(),
+                    "idle_end": now_ist_iso(),
                     "duration": duration
                 })
 
@@ -152,10 +164,10 @@ def save_activity():
                     idle_time=duration,
                     activity_metadata=json.dumps({
                         "idle_start": idle_start,
-                        "idle_end": datetime.now(IST).isoformat(),
+                        "idle_end": now_ist_iso(),
                         "duration": duration
                     }),
-                    created_at=datetime.now(IST)
+                    created_at=now_ist()
                 )
 
                 db.session.add(activity)
@@ -170,7 +182,7 @@ def save_activity():
                 username=username,
                 action="app_usage",
                 app_url=data.get("app_url"),
-                created_at=datetime.now(IST)
+                created_at=now_ist()
             )
 
             db.session.add(activity)
@@ -185,7 +197,7 @@ def save_activity():
                 username=username,
                 action="screenshot",
                 screenshot_path=file_path,
-                created_at=datetime.now(IST)
+                created_at=now_ist()
             )
 
             db.session.add(activity)

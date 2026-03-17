@@ -1,23 +1,23 @@
 from flask import Blueprint, request, jsonify, session
 from models import db, User, Admin, Log
-from utils.datetime_utils import now_ist_iso
+from utils.datetime_utils import now_ist_naive
 
 user_bp = Blueprint('login', __name__)
 
 
 # =========================
-# SESSION VERIFICATION ROUTE
+# SESSION VERIFICATION
 # =========================
 @user_bp.route("/session", methods=["GET", "OPTIONS"])
 def check_session():
-    """Verify if user session is valid."""
+
     if request.method == "OPTIONS":
         return jsonify({"status": "ok"}), 200
-    
+
     user_id = session.get("user_id")
     username = session.get("username")
     role = session.get("role")
-    
+
     if user_id and username:
         return jsonify({
             "success": True,
@@ -28,28 +28,26 @@ def check_session():
                 "role": role
             }
         }), 200
-    else:
-        return jsonify({
-            "success": False,
-            "authenticated": False,
-            "message": "No active session"
-        }), 401
+
+    return jsonify({
+        "success": False,
+        "authenticated": False,
+        "message": "No active session"
+    }), 401
 
 
 # =========================
-# LOGIN ROUTE
+# LOGIN
 # =========================
 @user_bp.route("/login", methods=["POST", "OPTIONS"])
 def login():
 
-    # Handle CORS preflight request
     if request.method == "OPTIONS":
         return jsonify({"status": "ok"}), 200
 
     try:
         data = request.get_json()
 
-        # Validate request body
         if not data:
             return jsonify({
                 "success": False,
@@ -62,13 +60,13 @@ def login():
         if not username or not password:
             return jsonify({
                 "success": False,
-                "message": "Username and password are required"
+                "message": "Username and password required"
             }), 400
 
-        # Check Admin table first
+        # Check admin
         user = Admin.query.filter_by(username=username).first()
 
-        # Then check User table
+        # Check user
         if not user:
             user = User.query.filter_by(username=username).first()
 
@@ -78,7 +76,6 @@ def login():
                 "message": "User not found"
             }), 404
 
-        # Password check
         if not user.check_password(password):
             return jsonify({
                 "success": False,
@@ -90,21 +87,19 @@ def login():
 
         # Create login log
         new_log = Log(
-            login_time=now_ist_iso(),
+            login_time=now_ist_naive(),
             username=user.username,
             email=user.email,
-            designation=user.designation if user.designation else "N/A",
-            domain=user.domain if user.domain else "System",
+            designation=user.designation or "N/A",
+            domain=user.domain or "System",
             role=user.role,
             action="User Logged In"
         )
 
-        print(f"📝 Creating Log -> User: {new_log.username}, Designation: {new_log.designation}")
-
         db.session.add(new_log)
         db.session.commit()
 
-        # Store session
+        # Create session
         session["user_id"] = user.id
         session["username"] = user.username
         session["role"] = user.role
@@ -117,6 +112,7 @@ def login():
 
     except Exception as e:
         db.session.rollback()
+
         return jsonify({
             "success": False,
             "message": "Server error",
@@ -125,40 +121,38 @@ def login():
 
 
 # =========================
-# LOGOUT ROUTE
+# LOGOUT
 # =========================
 @user_bp.route("/logout", methods=["POST", "OPTIONS"])
 def logout():
 
-    # Handle CORS preflight
     if request.method == "OPTIONS":
         return jsonify({"status": "ok"}), 200
 
     try:
         username = session.get("username")
 
-        # Fallback if session missing
         if not username and request.is_json:
             username = request.json.get("username")
 
         if username:
-            user = Admin.query.filter_by(username=username).first() or \
-                   User.query.filter_by(username=username).first()
+
+            user = Admin.query.filter_by(username=username).first() \
+                   or User.query.filter_by(username=username).first()
 
             if user:
                 user.status = "Offline"
 
-                new_log = Log(
-                    logout_time=now_ist_iso(),
+                # find last login log
+                last_log = Log.query.filter_by(
                     username=user.username,
-                    email=user.email,
-                    designation=user.designation or "N/A",
-                    domain=user.domain or "System",
-                    role=user.role,
-                    action="User Logged Out"
-                )
+                    logout_time=None
+                ).order_by(Log.id.desc()).first()
 
-                db.session.add(new_log)
+                if last_log:
+                    last_log.logout_time = now_ist_naive()
+                    last_log.action = "User Logged Out"
+
                 db.session.commit()
 
         session.clear()
@@ -170,6 +164,7 @@ def logout():
 
     except Exception as e:
         db.session.rollback()
+
         return jsonify({
             "success": False,
             "message": "Server error",
@@ -178,7 +173,7 @@ def logout():
 
 
 # =========================
-# GET LOGS ROUTE
+# GET LOGS
 # =========================
 @user_bp.route("/logs", methods=["GET", "OPTIONS"])
 def get_logs():
@@ -187,7 +182,12 @@ def get_logs():
         return jsonify({"status": "ok"}), 200
 
     try:
+
         logs = Log.query.order_by(Log.id.desc()).all()
-        return jsonify([log.to_dict() for log in logs]), 200
+
+        return jsonify([
+            log.to_dict() for log in logs
+        ]), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500

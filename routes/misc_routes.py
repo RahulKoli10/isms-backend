@@ -4,9 +4,9 @@ from auth_middleware import login_required, role_required
 
 misc_bp = Blueprint('misc', __name__)
 
-@misc_bp.route("/logs", methods=["GET"])
+@misc_bp.route("/logs/recent", methods=["GET"])
 @login_required
-def get_logs():
+def get_recent_logs():
     """Returns last 20 logs. Requires login."""
     logs = Log.query.order_by(Log.id.desc()).limit(20).all()
     return jsonify([l.to_dict() for l in logs])

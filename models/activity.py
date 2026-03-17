@@ -1,8 +1,5 @@
 from models import db
-from datetime import datetime
-import pytz
-
-IST = pytz.timezone("Asia/Kolkata")
+from utils.datetime_utils import now_ist, to_ist_iso
 
 
 class Activity(db.Model):
@@ -20,7 +17,7 @@ class Activity(db.Model):
 
     created_at = db.Column(
         db.DateTime,
-        default=lambda: datetime.now(IST)
+        default=now_ist
     )
 
     def to_dict(self):
@@ -28,11 +25,11 @@ class Activity(db.Model):
             "id": self.id,
             "username": self.username,
             "action": self.action,
-            "login_time": self.login_time,
-            "logout_time": self.logout_time,
+            "login_time": to_ist_iso(self.login_time),
+            "logout_time": to_ist_iso(self.logout_time),
             "idle_time": self.idle_time,
             "screenshot_path": self.screenshot_path,
             "app_url": self.app_url,
             "metadata": self.activity_metadata,
-            "created_at": self.created_at
+            "created_at": to_ist_iso(self.created_at)
         }

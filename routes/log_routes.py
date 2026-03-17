@@ -1,9 +1,56 @@
 from flask import Blueprint, request, jsonify
-from models import db, Log
+from models import db, Log, Activity
 from auth_middleware import login_required, role_required
-from utils.datetime_utils import now_ist_iso
+from utils.datetime_utils import now_ist, now_ist_naive, ensure_ist
 
 logs_bp = Blueprint('logs', __name__)
+
+
+def _attach_idle_times(logs):
+    usernames = {
+        (log.username or "").strip().lower()
+        for log in logs
+        if (log.username or "").strip()
+    }
+
+    if not usernames:
+        return [log.to_dict() for log in logs]
+
+    idle_activities = (
+        Activity.query.filter(
+            db.func.lower(Activity.username).in_(usernames),
+            Activity.action == "idle",
+            Activity.idle_time.isnot(None),
+        )
+        .order_by(Activity.created_at.asc())
+        .all()
+    )
+
+    activity_map = {}
+    for activity in idle_activities:
+        key = (activity.username or "").strip().lower()
+        activity_map.setdefault(key, []).append(activity)
+
+    now_value = now_ist()
+    enriched_logs = []
+
+    for log in logs:
+        serialized = log.to_dict()
+        username_key = (log.username or "").strip().lower()
+        session_start = ensure_ist(log.login_time)
+        session_end = ensure_ist(log.logout_time) or now_value
+        total_idle_time = 0
+
+        if session_start and username_key in activity_map:
+            for activity in activity_map[username_key]:
+                activity_time = ensure_ist(activity.created_at)
+                if activity_time and session_start <= activity_time <= session_end:
+                    total_idle_time += activity.idle_time or 0
+
+        serialized["idle_time"] = total_idle_time
+        enriched_logs.append(serialized)
+
+    return enriched_logs
 
 @logs_bp.route("/logs", methods=["GET"])
 @login_required
@@ -11,7 +58,7 @@ def get_all_logs():
     """Fetch all activity logs. Requires login."""
     try:
         logs = Log.query.order_by(Log.id.desc()).all()
-        return jsonify([log.to_dict() for log in logs]), 200
+        return jsonify(_attach_idle_times(logs)), 200
     except Exception:
         return jsonify({"error": "Failed to fetch logs."}), 500
 
@@ -24,7 +71,7 @@ def create_log():
         return jsonify({"error": "Request body is required"}), 400
     try:
         new_log = Log(
-            login_time=now_ist_iso(),
+            login_time=now_ist_naive(),
             username=data.get("username"),
             email=data.get("email"),
             domain=data.get("domain", ""),

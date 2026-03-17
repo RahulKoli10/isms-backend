@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, session
 from models import db, Admin, User, Log
 from sqlalchemy import or_
-from utils.datetime_utils import now_ist_iso
+from utils.datetime_utils import now_ist_naive
 
 auth_bp = Blueprint('auth_bp', __name__)
 
@@ -37,7 +37,7 @@ def login():
         try:
             user.status = "Online"
             new_log = Log(
-                login_time=now_ist_iso(),
+                login_time=now_ist_naive(),
                 username=user.username,
                 email=user.email,
                 domain=getattr(user, 'domain', 'N/A'),
@@ -113,7 +113,7 @@ def logout():
                                     .first()
                 
                 if last_log:
-                    last_log.logout_time = now_ist_iso()
+                    last_log.logout_time = now_ist_naive()
                     last_log.action = "User Session Completed"
                     db.session.commit()
 
