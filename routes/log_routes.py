@@ -19,8 +19,8 @@ def _attach_idle_times(logs):
     idle_activities = (
         Activity.query.filter(
             db.func.lower(Activity.username).in_(usernames),
-            Activity.action == "idle",
             Activity.idle_time.isnot(None),
+            Activity.idle_time > 0,
         )
         .order_by(Activity.created_at.asc())
         .all()
@@ -31,21 +31,29 @@ def _attach_idle_times(logs):
         key = (activity.username or "").strip().lower()
         activity_map.setdefault(key, []).append(activity)
 
-    now_value = now_ist()
     enriched_logs = []
 
     for log in logs:
         serialized = log.to_dict()
         username_key = (log.username or "").strip().lower()
         session_start = ensure_ist(log.login_time)
-        session_end = ensure_ist(log.logout_time) or now_value
+        session_end = ensure_ist(log.logout_time)
         total_idle_time = 0
 
         if session_start and username_key in activity_map:
-            for activity in activity_map[username_key]:
-                activity_time = ensure_ist(activity.created_at)
-                if activity_time and session_start <= activity_time <= session_end:
-                    total_idle_time += activity.idle_time or 0
+            if session_end:
+                # Closed session: only count idle within [login, logout]
+                for activity in activity_map[username_key]:
+                    activity_time = ensure_ist(activity.created_at)
+                    if activity_time and session_start <= activity_time <= session_end:
+                        total_idle_time += activity.idle_time or 0
+            else:
+                # Open session (no logout yet): only count idle on the same day
+                session_date = session_start.date()
+                for activity in activity_map[username_key]:
+                    activity_time = ensure_ist(activity.created_at)
+                    if activity_time and activity_time.date() == session_date and activity_time >= session_start:
+                        total_idle_time += activity.idle_time or 0
 
         serialized["idle_time"] = total_idle_time
         enriched_logs.append(serialized)
